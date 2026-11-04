@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
+use Illuminate\Validation\Rules\Password;
 
 class CustomerAuthController extends Controller
 {
@@ -29,10 +30,17 @@ class CustomerAuthController extends Controller
     {
         // Validasi input form
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'phone' => ['required', 'string', 'max:15'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:users',
+            'password' => [
+                'required',
+                'string',
+                'confirmed', // Jika ada field password_confirmation
+                Password::min(6)             // Minimal 6 karakter
+                    ->mixedCase()            // Harus ada huruf besar dan kecil
+                    ->numbers()              // Harus ada angka
+                    ->symbols(),             // Harus ada simbol (bisa disesuaikan jika ingin angka ATAU simbol)
+            ],
         ]);
 
         // Simpan data ke database dengan role customer
