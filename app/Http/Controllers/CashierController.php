@@ -1,32 +1,28 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Debt;
 use App\Models\Product;
 use App\Models\Category;
+use Illuminate\Support\Facades\DB;
 
 class CashierController extends Controller
 {
-    /**
-     * Tampilkan halaman utama kasir & buku utang
-     */
     public function index(Request $request)
     {
         $search = $request->input('search');
-        
-        // 1. Ambil data customer dengan append buyer_level agar level dinamis terbaca di frontend
+       
         $customers = User::where('role', 'customer')->get()->append('buyer_level');
-
-        // 2. Ambil data kategori dan produk untuk ditampilkan di halaman kasir
         $categories = Category::all();
         $products = Product::when($search, function ($query, $search) {
             $query->where('name', 'like', "%{$search}%");
         })->get();
 
-        // 3. Ambil data utang dan gabungkan per customer_id untuk buku utang
         $debts = Debt::with(['customer', 'order'])
             ->when($search, function ($query, $search) {
                 $query->whereHas('customer', function ($q) use ($search) {
@@ -52,7 +48,6 @@ class CashierController extends Controller
             })
             ->values();
 
-        // Jika request AJAX untuk pencarian live search buku utang
         if ($request->ajax() && $request->has('search')) {
             return view('debts.partials.table', compact('debts'));
         }
@@ -83,88 +78,85 @@ class CashierController extends Controller
             'is_available'   => ($request->stock <= 0) ? 0 : $request->is_available,
         ];
 
-        // Tangani upload foto baru jika ada
+        // Cek apakah ada file gambar baru yang diunggah
         if ($request->hasFile('image')) {
+            // Hapus gambar lama jika ada
             if ($product->image && file_exists(public_path($product->image))) {
                 @unlink(public_path($product->image));
             }
 
             $image = $request->file('image');
-            $imageName = time() . '_' . $image->getClientOriginalName();
+            $imageName = time() . '_' . preg_replace('/\s+/', '_', $image->getClientOriginalName());
+            
+            // Simpan ke folder public/products
             $image->move(public_path('products'), $imageName);
             $data['image'] = 'products/' . $imageName;
         }
 
+        // Eksekusi update ke database
         $product->update($data);
 
         return redirect()->back()->with('success', "Produk {$product->name} berhasil diperbarui!");
     }
 
     public function storeOrder(Request $request)
-        {
-            $messages = [
-                'total_amount.required' => 'Belum ada produk yang dipilih dalam keranjang!',
-                'paid_amount.required'  => 'Gagal, Masukkan uang sesuai total atau lebih',
-                'paid_amount.numeric'   => 'Gagal, Masukkan uang sesuai total atau lebih',
-                'customer_id.required'  => 'Silakan pilih atau masukkan nama pelanggan terlebih dahulu!',
-            ];
+    {
+        $messages = [
+            'total_amount.required' => 'Belum ada produk yang dipilih dalam keranjang!',
+            'paid_amount.required'  => 'Gagal, Masukkan uang sesuai total atau lebih',
+            'paid_amount.numeric'   => 'Gagal, Masukkan uang sesuai total atau lebih',
+            'customer_id.required'  => 'Silakan pilih atau masukkan nama pelanggan terlebih dahulu!',
+        ];
 
-            // 1. Tangani Pelanggan Baru (NEW:) SEBELUM validasi 'exists:users,id' dijalankan
-            $rawCustomerId = $request->customer_id;
-            $resolvedCustomerId = $rawCustomerId;
+        $rawCustomerId = $request->customer_id;
+        $resolvedCustomerId = $rawCustomerId;
+        if ($rawCustomerId && str_starts_with($rawCustomerId, 'NEW:')) {
+            $newCustomerName = str_replace('NEW:', '', $rawCustomerId);
+       
+            $newCustomer = User::create([
+                'name'     => $newCustomerName,
+                'email'    => strtolower(str_replace(' ', '', $newCustomerName)) . rand(100, 999) . '@madusis.local',
+                'password' => bcrypt('password123'),
+                'role'     => 'customer',
+            ]);
+       
+            $resolvedCustomerId = $newCustomer->id;
+            $request->merge(['customer_id' => $resolvedCustomerId]);
+        }
 
-            if ($rawCustomerId && str_starts_with($rawCustomerId, 'NEW:')) {
-                $newCustomerName = str_replace('NEW:', '', $rawCustomerId);
-            
-                $newCustomer = User::create([
-                    'name'     => $newCustomerName,
-                    'email'    => strtolower(str_replace(' ', '', $newCustomerName)) . rand(100, 999) . '@madusis.local',
-                    'password' => bcrypt('password123'),
-                    'role'     => 'customer',
-                ]);
-            
-                // Timpa dengan ID asli dari database yang baru saja dibuat
-                $resolvedCustomerId = $newCustomer->id;
-                
-                // Masukkan kembali ke request agar lolos validasi 'exists'
-                ['customer_id' => $resolvedCustomerId];
-                $request->merge(['customer_id' => $resolvedCustomerId]);
-            }
+        $request->validate([
+            'customer_id'    => 'required|exists:users,id',
+            'payment_method' => 'required|in:cash,qris,debt',
+            'total_amount'   => 'required|numeric|min:1',
+            'paid_amount'    => 'nullable|numeric',
+            'cart'           => 'required|array|min:1',
+        ], $messages);
 
-            // 2. Jalankan Validasi setelah customer baru berhasil dibuat/di-resolve ID-nya
-            $request->validate([
-                'customer_id'    => 'required|exists:users,id',
-                'payment_method' => 'required|in:cash,qris,debt',
-                'total_amount'   => 'required|numeric|min:1',
-                'paid_amount'    => 'nullable|numeric',
-                'cart'           => 'required|array|min:1',
-            ], $messages);
+        $customer = User::findOrFail($resolvedCustomerId);
 
-            $customer = User::findOrFail($resolvedCustomerId);
+        if ($request->payment_method === 'debt' && !$customer->canUseDebt()) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['payment_method' => "Pelanggan {$customer->name} masih Level 1 (Belum memenuhi syarat minimal 5x transaksi atau total belanja Rp 200.000 untuk menggunakan metode Utang)."]);
+        }
 
-            // 3. Validasi Metode Utang (Khusus Level 2)
-            if ($request->payment_method === 'debt' && !$customer->canUseDebt()) {
+        $totalAmount = (float) $request->total_amount;
+        $paidAmount = (float) ($request->paid_amount ?? 0);
+        $remainingDebt = max(0, $totalAmount - $paidAmount);
+
+        if ($request->payment_method === 'cash') {
+            if ($paidAmount < $totalAmount || $paidAmount <= 0) {
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors(['payment_method' => "Pelanggan {$customer->name} masih Level 1 (Belum memenuhi syarat minimal 5x transaksi atau total belanja Rp 200.000 untuk menggunakan metode Utang)."]);
+                    ->withErrors(['paid_amount' => 'Gagal, Masukkan uang sesuai total atau lebih']);
             }
+        }
 
-            $totalAmount = (float) $request->total_amount;
-            $paidAmount = (float) ($request->paid_amount ?? 0);
-            $remainingDebt = max(0, $totalAmount - $paidAmount);
+        $changeAmount = ($request->payment_method === 'cash') ? max(0, $paidAmount - $totalAmount) : 0;
 
-            // 4. Validasi Pembayaran Tunai / Cash
-            if ($request->payment_method === 'cash') {
-                if ($paidAmount < $totalAmount || $paidAmount <= 0) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->withErrors(['paid_amount' => 'Gagal, Masukkan uang sesuai total atau lebih']);
-                }
-            }
-
-            $changeAmount = ($request->payment_method === 'cash') ? max(0, $paidAmount - $totalAmount) : 0;
-
-            // 5. Simpan Transaksi Utama ke Tabel Orders (Menggunakan $resolvedCustomerId yang pasti valid)
+        DB::beginTransaction();
+        try {
+            // 1. Simpan Header Transaksi Utama
             $order = Order::create([
                 'user_id'        => $resolvedCustomerId,
                 'total_amount'   => $totalAmount,
@@ -174,21 +166,26 @@ class CashierController extends Controller
                 'status'         => ($request->payment_method === 'debt') ? ($remainingDebt <= 0 ? 'paid' : 'unpaid') : 'paid',
             ]);
 
-            // 6. Kurangi Stok Produk & Simpan Detail Item
+            // 2. Simpan Detail Item dan Potong Stok Produk
             foreach ($request->cart as $item) {
                 $product = Product::find($item['product_id']);
                 if ($product) {
+                    OrderItem::create([
+                        'order_id'   => $order->id,
+                        'product_id' => $product->id,
+                        'quantity'   => $item['quantity'],
+                        'price'      => $product->selling_price,
+                        'subtotal'   => $product->selling_price * $item['quantity'],
+                    ]);
+
                     $product->stock -= $item['quantity'];
                     if ($product->stock < 0) $product->stock = 0;
-                
-                    if ($product->stock == 0) {
-                        $product->is_available = 0;
-                    }
+                    if ($product->stock == 0) $product->is_available = 0;
                     $product->save();
                 }
             }
 
-            // 7. Catat Utang jika metode pembayaran adalah utang
+            // 3. Catat Utang jika metode pembayaran adalah utang
             if ($request->payment_method === 'debt') {
                 Debt::create([
                     'customer_id'    => $resolvedCustomerId,
@@ -199,6 +196,11 @@ class CashierController extends Controller
                 ]);
             }
 
+            DB::commit();
             return redirect()->route('cashier.index')->with('success', 'Transaksi berhasil diproses, stok diperbarui, dan level pelanggan diperbarui!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['msg' => 'Gagal memproses transaksi: ' . $e->getMessage()]);
         }
+    }
 }

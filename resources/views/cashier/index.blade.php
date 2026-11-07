@@ -1,5 +1,47 @@
 @extends('layouts.app')
 @section('title', 'Madusis')
+@section('styles')
+<style>
+    .text-stock-habis {
+        font-size: 11px;
+        color: #dc2626;
+        font-weight: 700;
+    }
+    .text-stock-normal {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: normal;
+    }
+    /* Tambahkan CSS Toast di sini agar posisinya melayang di kanan atas */
+    .toast-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 14px 20px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 99999;
+        animation: slideInRight 0.3s ease forwards;
+        max-width: 350px;
+    }
+    .toast-notification.hiding {
+        animation: slideOutRight 0.3s ease forwards;
+    }
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+</style>
+@endsection
 @section('content')
         <!-- POS Layout Utama (Membungkus Kiri & Kanan Berjajar) -->
         <div class="pos-layout" style="display: flex; flex: 1; overflow: hidden;">
@@ -67,9 +109,9 @@
                             <span style="font-size: 12px; font-weight: 700; color: #02c77f;">Rp {{ number_format($prod->selling_price, 0, ',', '.') }}</span>
                             
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                                <span style="font-size: 11px; color: {{ $isHabis ? '#dc2626' : '#64748b' }}; font-weight: {{ $isHabis ? '700' : 'normal' }};">
-                                    Stok: {{ $prod->stock }}
-                                </span>
+                                    <span class="{{ $isHabis ? 'text-stock-habis' : 'text-stock-normal' }}">
+                                        Stok: {{ $prod->stock }}
+                                    </span>
 
                                 <!-- Tombol Edit Produk Khusus Admin di Setiap Card -->
                                 @if(auth()->check() && auth()->user()->role === 'admin')
@@ -86,7 +128,7 @@
 
             <!-- 3. ORDER SUMMARY DI KANAN -->
             <div class="order-summary-panel" style="width: 380px; min-width: 380px; background: #ffffff; border-left: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; height: 100%;">
-               
+            
                 <form action="{{ route('cashier.order.store') }}" method="POST" id="checkout-form" onsubmit="prepareCheckout(event)" style="display: flex; flex-direction: column; height: 100%; justify-content: space-between;">
                     @csrf
                     
@@ -549,11 +591,11 @@
         calculateChange();
     }
 
-    function handleCardClick(cardElement) {
-        const id = cardElement.getAttribute('data-id');
-        const name = cardElement.getAttribute('data-name');
-        const price = parseFloat(cardElement.getAttribute('data-price'));
-        const stock = parseInt(cardElement.getAttribute('data-stock'));
+    function handleCardClick(element) {
+        const id = element.getAttribute('data-id');
+        const name = element.getAttribute('data-name');
+        const price = parseFloat(element.getAttribute('data-price'));
+        const stock = parseInt(element.getAttribute('data-stock'));
         addToCart(id, name, price, stock);
     }
 
