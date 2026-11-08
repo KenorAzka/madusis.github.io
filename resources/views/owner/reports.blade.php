@@ -1,6 +1,5 @@
 @extends('layouts.app')
 @section('title', 'Madusis - Laporan Keuangan Detail')
-
 @section('styles')
 <style>
     .badge-status-paid {
@@ -29,7 +28,6 @@
     }
 </style>
 @endsection
-
 @section('content')
 <div style="flex: 1; padding: 25px; overflow-y: auto; background: #f8fafc;">
     <!-- Header Page -->
@@ -42,7 +40,6 @@
             <i class="fa-solid fa-print me-1"></i> Cetak Laporan
         </button>
     </div>
-
     <!-- Filter Bar -->
     <div style="background: #fff; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <form method="GET" action="{{ route('owner.reports') }}" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
@@ -66,7 +63,6 @@
             </div>
         </form>
     </div>
-
     <!-- Metrik Ringkasan -->
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
         <div style="background: #fff; padding: 15px; border-radius: 10px; border: 1px solid var(--border-color);">
@@ -82,7 +78,6 @@
             <h4 style="font-size: 18px; color: #dc2626; margin-top: 4px;">Rp {{ number_format($totalReportDebt, 0, ',', '.') }}</h4>
         </div>
     </div>
-
     <!-- Tabel 1: Transaksi Penjualan Utama -->
     <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Riwayat Penjualan POS</h4>
@@ -92,7 +87,7 @@
                     <th style="padding: 10px;">ID / Waktu</th>
                     <th style="padding: 10px;">Pelanggan</th>
                     <th style="padding: 10px;">Item Dibeli</th>
-                    <th style="padding: 10px;">Metode</th>
+                    <th style="padding: 10px;">Metode & Pembayaran</th>
                     <th style="padding: 10px;">Status</th>
                     <th style="padding: 10px; text-align: right;">Total Transaksi</th>
                 </tr>
@@ -116,6 +111,20 @@
                         <span style="text-transform: uppercase; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #f1f5f9;">
                             {{ $ord->payment_method }}
                         </span>
+                        
+                        <!-- Rincian Uang Tunai Diterima & Kembalian di Laporan -->
+                        @if($ord->payment_method === 'cash')
+                            <div style="font-size: 10px; color: #64748b; margin-top: 4px;">
+                                Diterima: <strong>Rp {{ number_format($ord->paid_amount, 0, ',', '.') }}</strong>
+                                @if($ord->change_amount > 0)
+                                    <br>Kembalian: <span style="color: #16a34a;">Rp {{ number_format($ord->change_amount, 0, ',', '.') }}</span>
+                                @endif
+                            </div>
+                        @elseif($ord->payment_method === 'debt' && $ord->paid_amount > 0)
+                            <div style="font-size: 10px; color: #0284c7; margin-top: 4px;">
+                                DP/Awal: <strong>Rp {{ number_format($ord->paid_amount, 0, ',', '.') }}</strong>
+                            </div>
+                        @endif
                     </td>
                     <td style="padding: 10px;">
                         <span class="{{ $ord->status === 'paid' ? 'badge-status-paid' : 'badge-status-unpaid' }}">
@@ -135,7 +144,6 @@
                 @endforelse
             </tbody>
         </table>
-
         <!-- Paginasi -->
         <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b;">
             <div>
@@ -147,7 +155,6 @@
                 @else
                     <a href="{{ $allOrders->previousPageUrl() }}" style="padding: 5px 10px; background: #fff; border: 1px solid #cbd5e1; color: #1e293b; text-decoration: none; border-radius: 6px; font-weight: 600;">&laquo; Prev</a>
                 @endif
-
                 @if ($allOrders->hasMorePages())
                     <a href="{{ $allOrders->nextPageUrl() }}" style="padding: 5px 10px; background: #fff; border: 1px solid #cbd5e1; color: #1e293b; text-decoration: none; border-radius: 6px; font-weight: 600;">Next &raquo;</a>
                 @else
@@ -156,7 +163,6 @@
             </div>
         </div>
     </div>
-
     <!-- Tabel 2: Riwayat Pembayaran & Cicilan Utang -->
     <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Log Pelunasan & Pembayaran Cicilan Utang</h4>

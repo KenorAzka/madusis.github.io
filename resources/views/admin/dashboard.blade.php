@@ -2,6 +2,32 @@
 @section('title', 'Admin - Kelola Stok & Produk')
 @section('styles')
 <style>
+    .cell-padding {
+        padding: 10px;
+    }
+    .stock-text {
+        font-weight: 700;
+    }
+    .stock-low {
+        color: #ef4444;
+    }
+    .stock-normal {
+        color: #1e293b;
+    }
+    .status-badge {
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    .status-active {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .status-inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
     /* Styling Toast Notification di Kanan Atas */
     .toast-notification {
         position: fixed;
@@ -81,13 +107,13 @@
                     <td style="padding: 10px;">{{ $prod->category->name ?? '-' }}</td>
                     <td style="padding: 10px; color: #64748b;">Rp {{ number_format($prod->purchase_price, 0, ',', '.') }}</td>
                     <td style="padding: 10px; font-weight: 700; color: #02c77f;">Rp {{ number_format($prod->selling_price, 0, ',', '.') }}</td>
-                    <td style="padding: 10px;">
-                        <span style="font-weight: 700; color: {{ $prod->stock <= 5 ? '#ef4444' : '#1e293b' }};">
+                    <td class="cell-padding">
+                        <span class="stock-text {{ $prod->stock <= 5 ? 'stock-low' : 'stock-normal' }}">
                             {{ $prod->stock }}
                         </span>
                     </td>
-                    <td style="padding: 10px;">
-                        <span style="padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; background: {{ $prod->is_available ? '#dcfce7' : '#fee2e2' }}; color: {{ $prod->is_available ? '#16a34a' : '#dc2626' }};">
+                    <td class="cell-padding">
+                        <span class="status-badge {{ $prod->is_available ? 'status-active' : 'status-inactive' }}">
                             {{ $prod->is_available ? 'Aktif' : 'Non-Aktif' }}
                         </span>
                     </td>

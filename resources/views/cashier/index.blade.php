@@ -381,6 +381,39 @@
         </div>
     </div>
 
+    <!-- Modal Restore Database -->
+<div id="restoreModal" class="mac-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="mac-modal-window" style="background: #fff; width: 400px; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div class="mac-modal-header" style="background: #f1f5f9; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; font-size: 13px; color: #1e293b;"><i class="fa-solid fa-database"></i> Restore Database</span>
+            <button onclick="closeRestoreModal()" style="background: none; border: none; font-size: 14px; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form action="{{ route('database.restore') }}" method="POST" enctype="multipart/form-data" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+            @csrf
+            <div style="font-size: 12px; color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 6px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Peringatan: Melakukan restore akan menimpa seluruh data saat ini dengan data dari file backup!
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 600; color: #475569;">Pilih File Backup (.sql):</label>
+                <input type="file" name="backup_file" accept=".sql" required style="font-size: 11px; border: 1px solid #cbd5e1; padding: 6px; border-radius: 6px;">
+            </div>
+            <button type="submit" onclick="return confirm('Yakin ingin merestore database sekarang?')" style="background: #1c2a3a; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                Proses Restore
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openRestoreModal(e) {
+        if(e) e.preventDefault();
+        document.getElementById('restoreModal').style.display = 'flex';
+    }
+    function closeRestoreModal() {
+        document.getElementById('restoreModal').style.display = 'none';
+    }
+</script>
+
     @if(session('success'))
         <div id="toast-alert" class="toast-notification">
             <div style="background: rgba(2, 199, 127, 0.15); color: #02c77f; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">

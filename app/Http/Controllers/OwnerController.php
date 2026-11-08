@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -17,10 +16,10 @@ class OwnerController extends Controller
 
     public function dashboard()
     {
-        // Omzet Hari Ini (Transaksi lunas hari ini + pembayaran cicilan utang hari ini)
+        // Omzet Hari Ini (Total belanja riil hari ini + pembayaran cicilan utang hari ini)
         $todayOrderOmzet = Order::whereDate('created_at', Carbon::today())
-            ->where('status', 'paid')
-            ->sum('total_amount');
+            ->where('status', '!=', 'cancelled')
+            ->sum('total_amount'); // Menggunakan total_amount, bukan paid_amount agar pas sesuai nominal belanja
 
         $todayDebtPaymentOmzet = DebtPayment::whereDate('created_at', Carbon::today())
             ->sum('amount_paid');
@@ -28,14 +27,14 @@ class OwnerController extends Controller
         $todayOmzet = $todayOrderOmzet + $todayDebtPaymentOmzet;
 
         // Total Omzet Keseluruhan
-        $totalOrderOmzet = Order::where('status', 'paid')->sum('total_amount');
+        $totalOrderOmzet = Order::where('status', '!=', 'cancelled')->sum('total_amount');
         $totalDebtPaymentOmzet = DebtPayment::sum('amount_paid');
         $totalOmzet = $totalOrderOmzet + $totalDebtPaymentOmzet;
 
         // Total Utang Aktif Sisa yang Belum Lunas
         $totalDebt = Debt::where('status', '!=', 'paid')->sum('remaining_debt');
 
-        // Ambil Transaksi POS Terbaru
+        // Ambil Transaksi POS Terbaru (Menyertakan paid_amount & change_amount untuk rincian tunai)
         $orders = Order::with(['user', 'orderItems.product'])
             ->latest()
             ->take(10)
@@ -107,11 +106,10 @@ class OwnerController extends Controller
             });
         }
 
-        // 3. Perhitungan Metrik Keuangan Akurat
-        // Total Omzet = Penjualan Cash/QRIS/Lunas + Pembayaran Cicilan Utang
-        $totalReportOmzet = (clone $ordersQuery)->where('status', 'paid')->sum('total_amount') 
+        // 3. Perhitungan Metrik Keuangan Akurat (Menggunakan total_amount untuk penjualan bersih)
+        $totalReportOmzet = (clone $ordersQuery)->where('status', '!=', 'cancelled')->sum('total_amount')
                           + (clone $paymentsQuery)->sum('amount_paid');
-
+        
         $totalReportTransactions = (clone $ordersQuery)->count() + (clone $paymentsQuery)->count();
 
         // Total Utang Aktif diambil langsung dari Sisa Utang di Tabel Debts

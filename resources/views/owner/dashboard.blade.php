@@ -26,7 +26,6 @@
         <h2 style="font-size: 20px; font-weight: 700; color: #1e293b;">Executive Summary</h2>
         <p style="font-size: 12px; color: #64748b;">Pantauan performa keuangan & transaksi Warung Madusis</p>
     </div>
-
     <!-- Ringkasan Keuangan Dinamis -->
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
         <div style="background: #fff; padding: 18px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
@@ -42,7 +41,6 @@
             <h3 style="font-size: 22px; color: #dc2626; margin-top: 5px;">Rp {{ number_format($totalDebt, 0, ',', '.') }}</h3>
         </div>
     </div>
-
     <!-- Log Riwayat Transaksi -->
     <div style="background: #fff; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px;">Aktivitas Transaksi & Pembayaran Terbaru</h4>
@@ -56,6 +54,20 @@
                                 <i class="fa-solid fa-receipt me-1" style="color: #0284c7;"></i> Order #{{ $act->id }}
                             </span>
                             <span style="color: #64748b; margin-left: 8px;">Pelanggan: {{ $act->user->name ?? 'Umum' }}</span>
+                            
+                            <!-- Rincian Uang Tunai Diterima & Kembalian -->
+                            @if($act->payment_method === 'cash')
+                                <div style="font-size: 11px; color: #475569; margin-top: 4px;">
+                                    <span>Uang Diterima: <strong>Rp {{ number_format($act->paid_amount, 0, ',', '.') }}</strong></span>
+                                    @if($act->change_amount > 0)
+                                        <span style="margin-left: 8px; color: #16a34a;">(Kembalian: Rp {{ number_format($act->change_amount, 0, ',', '.') }})</span>
+                                    @endif
+                                </div>
+                            @elseif($act->payment_method === 'debt' && $act->paid_amount > 0)
+                                <div style="font-size: 11px; color: #0284c7; margin-top: 4px;">
+                                    <span>Uang DP/Awal: <strong>Rp {{ number_format($act->paid_amount, 0, ',', '.') }}</strong></span>
+                                </div>
+                            @endif
                         </div>
                         <div style="display: flex; gap: 15px; align-items: center;">
                             <span class="{{ $act->payment_method === 'debt' ? 'badge-order-debt' : 'badge-order-paid' }}">

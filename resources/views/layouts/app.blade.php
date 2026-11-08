@@ -197,8 +197,7 @@
     <header class="top-navbar">
         <div class="brand-section">
             <i class="fa-solid fa-cash-register"></i>
-            <span>Madusis POS</span>
-            <span class="status-badge"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Open</span>
+            <span>MADUSIS</span>
         </div>
         <div class="user-info">
             <i class="fa-regular fa-calendar me-1"></i> {{ date('l, d M Y') }} &nbsp;|&nbsp; 
@@ -210,13 +209,16 @@
         <!-- Sidebar macOS Dock (Melayang di Kiri) -->
         <aside class="macos-sidebar-dock">
             <!-- Menu Kasir / POS -->
-            <a href="{{ route('cashier.index') }}" class="dock-item {{ request()->routeIs('cashier.*') ? 'active' : '' }}">
-                <div class="dock-dot"></div>
-                <div class="dock-icon">
-                    <i class="fa-solid fa-store"></i>
-                </div>
-                <span class="dock-tooltip">Kasir POS</span>
-            </a>
+        @if(auth()->user()->role === 'admin' || auth()->user()->role === 'cashier')
+        <a href="{{ route('cashier.index') }}" class="dock-item {{ request()->routeIs('cashier.index') ? 'active' : '' }}">
+            <div class="dock-dot"></div>
+            <div class="dock-icon">
+                <i class="fa-solid fa-cash-register"></i>
+            </div>
+            <span class="dock-tooltip">Kasir</span>
+        </a>
+        @endif
+
 
             @if(auth()->user()->role === 'owner')
             <!-- Executive Summary / Dashboard Owner -->
@@ -258,7 +260,29 @@
                 <span class="dock-tooltip">Buku Utang</span>
             </a>
 
+            @if(auth()->user()->role === 'cashier')
+            <!-- Menu Ringkasan Shift Kasir -->
+            <a href="{{ route('cashier.summary') }}" class="dock-item {{ request()->routeIs('cashier.summary') ? 'active' : '' }}">
+                <div class="dock-dot"></div>
+                <div class="dock-icon">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <span class="dock-tooltip">Ringkasan Shift</span>
+            </a>
+            @endif
+
+            @if(auth()->user()->role === 'admin' || auth()->user()->role === 'owner')
+                <a href="{{ route('database.index') }}" class="dock-item {{ request()->routeIs('database.*') ? 'active' : '' }}">
+                    <div class="dock-dot"></div>
+                    <div class="dock-icon">
+                        <i class="fa-solid fa-database"></i>
+                    </div>
+                    <span class="dock-tooltip">Backup & Restore</span>
+                </a>
+            @endif
+
             <div class="dock-divider"></div>
+
 
             <!-- Tombol Logout -->
             <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="dock-item">
@@ -272,6 +296,7 @@
                 @csrf
             </form>
         </aside>
+        
 
 <!-- Area Konten Utama -->
         <main class="main-content">

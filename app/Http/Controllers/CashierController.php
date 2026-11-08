@@ -203,4 +203,27 @@ class CashierController extends Controller
             return redirect()->back()->withErrors(['msg' => 'Gagal memproses transaksi: ' . $e->getMessage()]);
         }
     }
+    public function dailySummary()
+    {
+        $today = now()->toDateString();
+
+        // 1. Perbaikan: Total Pendapatan Harian dihitung dari total belanja (total_amount), 
+        // bukan dari uang yang dibayarkan pelanggan (paid_amount).
+        $totalHarian = Order::whereDate('created_at', $today)
+            ->where('status', '!=', 'cancelled') // Opsional jika ada status batal
+            ->sum('total_amount');
+
+        // 2. Total Sisa Utang / Bon Aktif
+        $totalUtang = Debt::where('remaining_debt', '>', 0)
+            ->sum('remaining_debt');
+
+        // 3. Aktivitas Transaksi Terakhir (menyertakan paid_amount & change_amount)
+        $recentActivities = Order::with('user')
+            ->whereDate('created_at', $today)
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('cashier.summary', compact('totalHarian', 'totalUtang', 'recentActivities'));
+    }
 }

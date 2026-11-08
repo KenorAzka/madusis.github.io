@@ -12,6 +12,7 @@ use App\Http\Controllers\CashierController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\OwnerController;
 use App\Http\Controllers\DebtController;
+use App\Http\Controllers\BackupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -65,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
+
 // Route Halaman Buku Utang & Detail Pembayaran
 Route::get('/debts', [DebtController::class, 'index'])->name('debts.index');
 Route::get('/debts/{id}', [DebtController::class, 'show'])->name('debts.show');
@@ -91,6 +93,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/debts/archive-paid', [DebtController::class, 'archivePaid'])->name('debts.archive');
     Route::delete('/debts/archive-paid', [DebtController::class, 'archivePaid'])->name('debts.archivePaid');
 
+    // Ringkasan Shift Kasir
+    Route::get('/cashier/summary', [CashierController::class, 'dailySummary'])->name('cashier.summary');
+
     // 2. AKSES KHUSUS ADMIN
     Route::middleware(['role:admin'])->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
@@ -101,5 +106,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['role:owner'])->prefix('owner')->group(function () {
         Route::get('/dashboard', [OwnerController::class, 'dashboard'])->name('owner.dashboard');
         Route::get('/reports', [OwnerController::class, 'reports'])->name('owner.reports');
+    });
+
+    // 4. AKSES KHUSUS BACKUP & RESTORE DATABASE (Admin & Owner)
+    Route::prefix('database')->group(function () {
+        Route::get('/backup-restore', function () {
+            // Menggunakan Auth::user() secara eksplisit
+            if (!Auth::check() || !in_array(Auth::user()->role, ['admin', 'owner'])) {
+                abort(403, 'Unauthorized action.');
+            }
+            return view('backup.index');
+        })->name('database.index');
+
+        Route::get('/backup', [BackupController::class, 'backup'])->name('database.backup');
+        Route::post('/restore', [BackupController::class, 'restore'])->name('database.restore');
     });
 });
