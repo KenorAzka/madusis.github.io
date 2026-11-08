@@ -18,6 +18,26 @@
         background: #dcfce7;
         color: #16a34a;
     }
+    /* Styling Custom Scrollbar yang Elegan */
+    .custom-scroll {
+        max-height: 380px; /* Atur tinggi maksimal area list */
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
 </style>
 @endsection
 @section('content')
@@ -42,9 +62,15 @@
         </div>
     </div>
     <!-- Log Riwayat Transaksi -->
-    <div style="background: #fff; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px;">Aktivitas Transaksi & Pembayaran Terbaru</h4>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="background: #fff; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column;">
+        
+        <!-- H4 Dibuat Tetap di Atas (Sticky / Fixed Header) -->
+        <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px; position: sticky; top: 0; background: #fff; z-index: 10; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;">
+            Aktivitas Transaksi & Pembayaran Terbaru
+        </h4>
+
+        <!-- Container Daftar Aktivitas yang Bisa di-Scroll dengan Custom Scrollbar -->
+        <div class="custom-scroll" style="display: flex; flex-direction: column; gap: 10px;">
             @forelse($recentActivities as $act)
                 @if($act->activity_type === 'order')
                     <!-- Tampilan Aktivitas Order POS -->
@@ -54,7 +80,7 @@
                                 <i class="fa-solid fa-receipt me-1" style="color: #0284c7;"></i> Order #{{ $act->id }}
                             </span>
                             <span style="color: #64748b; margin-left: 8px;">Pelanggan: {{ $act->user->name ?? 'Umum' }}</span>
-                            
+                        
                             <!-- Rincian Uang Tunai Diterima & Kembalian -->
                             @if($act->payment_method === 'cash')
                                 <div style="font-size: 11px; color: #475569; margin-top: 4px;">

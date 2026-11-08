@@ -68,9 +68,10 @@ class CashierController extends Controller
         ]);
 
         $product = Product::findOrFail($id);
-
+        
         $data = [
             'name'           => $request->name,
+            'slug'           => \Illuminate\Support\Str::slug($request->name), // <-- Update slug otomatis di sini
             'category_id'    => $request->category_id,
             'purchase_price' => $request->purchase_price,
             'selling_price'  => $request->selling_price,
@@ -78,25 +79,19 @@ class CashierController extends Controller
             'is_available'   => ($request->stock <= 0) ? 0 : $request->is_available,
         ];
 
-        // Cek apakah ada file gambar baru yang diunggah
         if ($request->hasFile('image')) {
-            // Hapus gambar lama jika ada
             if ($product->image && file_exists(public_path($product->image))) {
                 @unlink(public_path($product->image));
             }
-
             $image = $request->file('image');
             $imageName = time() . '_' . preg_replace('/\s+/', '_', $image->getClientOriginalName());
-            
-            // Simpan ke folder public/products
             $image->move(public_path('products'), $imageName);
             $data['image'] = 'products/' . $imageName;
         }
 
-        // Eksekusi update ke database
         $product->update($data);
 
-        return redirect()->back()->with('success', "Produk {$product->name} berhasil diperbarui!");
+        return redirect()->route('admin.dashboard')->with('success', "Produk {$product->name} berhasil diperbarui!");
     }
 
     public function storeOrder(Request $request)
@@ -203,25 +198,58 @@ class CashierController extends Controller
             return redirect()->back()->withErrors(['msg' => 'Gagal memproses transaksi: ' . $e->getMessage()]);
         }
     }
+
+    public function storeProduct(Request $request)
+    {
+        $request->validate([
+            'name'           => 'required|string|max:255',
+            'category_id'    => 'required|exists:categories,id',
+            'purchase_price' => 'required|numeric|min:0',
+            'selling_price'  => 'required|numeric|min:0',
+            'stock'          => 'required|integer|min:0',
+            'is_available'   => 'required|in:0,1',
+            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+
+        $data = [
+            'name'           => $request->name,
+            'slug'           => \Illuminate\Support\Str::slug($request->name), // <-- Tambahkan slug otomatis di sini
+            'category_id'    => $request->category_id,
+            'purchase_price' => $request->purchase_price,
+            'selling_price'  => $request->selling_price,
+            'stock'          => $request->stock,
+            'is_available'   => ($request->stock <= 0) ? 0 : $request->is_available,
+        ];
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = time() . '_' . preg_replace('/\s+/', '_', $image->getClientOriginalName());
+            $image->move(public_path('products'), $imageName);
+            $data['image'] = 'products/' . $imageName;
+        }
+
+        Product::create($data);
+
+        return redirect()->route('admin.dashboard')->with('success', 'Produk baru berhasil ditambahkan!');
+    }
     public function dailySummary()
     {
         $today = now()->toDateString();
 
-        // 1. Perbaikan: Total Pendapatan Harian dihitung dari total belanja (total_amount), 
-        // bukan dari uang yang dibayarkan pelanggan (paid_amount).
+        // 1. Total Pendapatan Harian
         $totalHarian = Order::whereDate('created_at', $today)
-            ->where('status', '!=', 'cancelled') // Opsional jika ada status batal
+            ->where('status', '!=', 'cancelled')
             ->sum('total_amount');
 
         // 2. Total Sisa Utang / Bon Aktif
         $totalUtang = Debt::where('remaining_debt', '>', 0)
             ->sum('remaining_debt');
 
-        // 3. Aktivitas Transaksi Terakhir (menyertakan paid_amount & change_amount)
-        $recentActivities = Order::with('user')
+        // 3. Aktivitas Transaksi Terakhir (Sertakan relasi user & orderItems.product)
+        $recentActivities = Order::with(['user', 'orderItems.product'])
             ->whereDate('created_at', $today)
             ->latest()
-            ->take(5)
+            ->take(10) // Bisa dinaikkan jika ingin menampilkan lebih dari 5
             ->get();
 
         return view('cashier.summary', compact('totalHarian', 'totalUtang', 'recentActivities'));

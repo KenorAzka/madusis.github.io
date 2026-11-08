@@ -1,6 +1,5 @@
 @extends('layouts.app')
 @section('title', 'Madusis - Buku Utang Pelanggan')
-
 @section('styles')
 <style>
     .badge-status-paid {
@@ -17,18 +16,16 @@
     }
 </style>
 @endsection
-
 @section('content')
 <div style="flex: 1; padding: 25px; overflow-y: auto; background: #f8fafc;">
-    
+   
     <!-- Header Halaman -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
         <div>
             <h2 style="font-size: 20px; font-weight: 700; color: #1e293b;">Buku Utang & Bon Pelanggan</h2>
             <p style="font-size: 12px; color: #64748b;">Daftar seluruh transaksi bon/utang dan status pelunasannya</p>
         </div>
-
-        <!-- Tombol Arsip Bon Lunas (Khusus Admin/Owner) -->
+        <!-- Tombol Arsip Bon Lunas -->
         <form action="{{ route('debts.archivePaid') }}" method="POST" onsubmit="return confirm('Yakin ingin mengarsipkan semua utang yang sudah lunas?')">
             @csrf
             @method('DELETE')
@@ -44,6 +41,15 @@
         </div>
     @endif
 
+    <!-- Live Search Bar & Info Count -->
+    <div style="background: #fff; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <div style="position: relative; width: 100%; max-width: 320px;">
+            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px;"></i>
+            <input type="text" id="debtSearchInput" oninput="liveSearchDebts()" placeholder="Cari nama pelanggan..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 8px; border: 1px solid var(--border-color); background: #f8fafc; font-size: 12px; outline: none;">
+        </div>
+        <span style="font-size: 12px; color: #64748b;" id="debtCountInfo">Menampilkan <strong>{{ count($debts) }}</strong> data utang</span>
+    </div>
+
     <!-- Tabel Daftar Utang -->
     <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -56,9 +62,9 @@
                     <th style="padding: 10px; text-align: center;">Aksi</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="debtTableBody">
                 @forelse($debts as $debt)
-                <tr style="border-bottom: 1px solid #f1f5f9;">
+                <tr class="debt-row" data-customer="{{ strtolower($debt->customer->name ?? 'umum') }}" style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 12px 10px;">
                         <strong>#{{ $debt->order_id }}</strong><br>
                         <span style="font-size: 10px; color: #64748b;">{{ $debt->created_at->format('d/m/Y H:i') }}</span>
@@ -85,7 +91,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr>
+                <tr id="emptyDebtRow">
                     <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
                         <i class="fa-solid fa-folder-open" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
                         Tidak ada data utang atau bon saat ini.
@@ -95,6 +101,30 @@
             </tbody>
         </table>
     </div>
-
 </div>
+
+<script>
+    // Fungsi Live Search Real-time untuk Buku Utang
+    function liveSearchDebts() {
+        const keyword = document.getElementById('debtSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.debt-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const customerName = row.getAttribute('data-customer');
+
+            if (customerName.includes(keyword)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const countInfo = document.getElementById('debtCountInfo');
+        if (countInfo) {
+            countInfo.innerHTML = `Menampilkan <strong>${visibleCount}</strong> data utang`;
+        }
+    }
+</script>
 @endsection

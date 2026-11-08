@@ -26,6 +26,26 @@
         background: #e0f2fe;
         color: #0369a1;
     }
+        /* Styling Custom Scrollbar yang Elegan */
+    .custom-scroll {
+        max-height: 380px; /* Atur tinggi maksimal area list */
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
 </style>
 @endsection
 @section('content')
@@ -164,48 +184,56 @@
         </div>
     </div>
     <!-- Tabel 2: Riwayat Pembayaran & Cicilan Utang -->
-    <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Log Pelunasan & Pembayaran Cicilan Utang</h4>
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-            <thead>
-                <tr style="background: #f1f5f9; text-align: left; color: #475569;">
-                    <th style="padding: 10px;">Waktu Pembayaran</th>
-                    <th style="padding: 10px;">Nama Pelanggan</th>
-                    <th style="padding: 10px;">Nominal Di-bayar</th>
-                    <th style="padding: 10px;">Sisa Utang Terakhir</th>
-                    <th style="padding: 10px;">Status Bon</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($recentPayments as $payment)
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px; font-weight: 600; color: #64748b;">
-                        {{ $payment->created_at->format('d/m/Y H:i') }}
-                    </td>
-                    <td style="padding: 10px; font-weight: 700; color: #1e293b;">
-                        {{ $payment->debt->customer->name ?? 'Pelanggan' }}
-                    </td>
-                    <td style="padding: 10px; font-weight: 700; color: #16a34a;">
-                        + Rp {{ number_format($payment->amount_paid, 0, ',', '.') }}
-                    </td>
-                    <td style="padding: 10px; font-weight: 600; color: #dc2626;">
-                        Rp {{ number_format($payment->debt->remaining_debt ?? 0, 0, ',', '.') }}
-                    </td>
-                    <td style="padding: 10px;">
-                        <span class="{{ ($payment->debt->remaining_debt ?? 0) <= 0 ? 'badge-status-paid' : 'badge-payment-cicilan' }}">
-                            {{ ($payment->debt->remaining_debt ?? 0) <= 0 ? 'LUNAS' : 'DICICIL' }}
-                        </span>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">
-                        Belum ada riwayat pembayaran cicilan utang.
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column;">
+        
+        <!-- Judul / Header Dibuat Tetap (Sticky) -->
+        <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 12px; position: sticky; top: 0; background: #fff; z-index: 10; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;">
+            Log Pelunasan & Pembayaran Cicilan Utang
+        </h4>
+
+        <!-- Pembungkus Tabel dengan Custom Scroll -->
+        <div class="custom-scroll" style="max-height: 350px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr style="background: #f1f5f9; text-align: left; color: #475569; position: sticky; top: 0; z-index: 5;">
+                        <th style="padding: 10px;">Waktu Pembayaran</th>
+                        <th style="padding: 10px;">Nama Pelanggan</th>
+                        <th style="padding: 10px;">Nominal Di-bayar</th>
+                        <th style="padding: 10px;">Sisa Utang Terakhir</th>
+                        <th style="padding: 10px;">Status Bon</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentPayments as $payment)
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px; font-weight: 600; color: #64748b;">
+                            {{ $payment->created_at->format('d/m/Y H:i') }}
+                        </td>
+                        <td style="padding: 10px; font-weight: 700; color: #1e293b;">
+                            {{ $payment->debt->customer->name ?? 'Pelanggan' }}
+                        </td>
+                        <td style="padding: 10px; font-weight: 700; color: #16a34a;">
+                            + Rp {{ number_format($payment->amount_paid, 0, ',', '.') }}
+                        </td>
+                        <td style="padding: 10px; font-weight: 600; color: #dc2626;">
+                            Rp {{ number_format($payment->debt->remaining_debt ?? 0, 0, ',', '.') }}
+                        </td>
+                        <td style="padding: 10px;">
+                            <span class="{{ ($payment->debt->remaining_debt ?? 0) <= 0 ? 'badge-status-paid' : 'badge-payment-cicilan' }}">
+                                {{ ($payment->debt->remaining_debt ?? 0) <= 0 ? 'LUNAS' : 'DICICIL' }}
+                            </span>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">
+                            Belum ada riwayat pembayaran cicilan utang.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

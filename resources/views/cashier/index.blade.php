@@ -40,6 +40,18 @@
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
     }
+    /* Styling status kartu produk */
+    .product-card-available {
+        background: #fff;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .product-card-disabled {
+        background: #f1f5f9;
+        opacity: 0.45;
+        filter: grayscale(100%);
+        cursor: not-allowed;
+    }
 </style>
 @endsection
 @section('content')
@@ -51,15 +63,19 @@
         
                 <!-- Baris Kategori & Pencarian -->
                 <div class="category-search-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 15px; background: #ffffff; padding: 10px 15px; border-radius: 12px; border: 1px solid var(--border-color);">
-                    <div class="categories-scroll" style="display: flex; gap: 8px; overflow-x: auto; white-space: nowrap;">
-                        <button class="category-pill active">Semua Kategori</button>
+                    
+                    <!-- Tombol Kategori -->
+                    <div class="categories-scroll" id="category-pills-container" style="display: flex; gap: 8px; overflow-x: auto; white-space: nowrap;">
+                        <button type="button" class="category-pill active" data-category="all" onclick="filterProducts('all', this)">Semua Kategori</button>
                         @foreach($categories as $cat)
-                            <button class="category-pill">{{ $cat->name }}</button>
+                            <button type="button" class="category-pill" data-category="{{ $cat->id }}" onclick="filterProducts('{{ $cat->id }}', this)">{{ $cat->name }}</button>
                         @endforeach
                     </div>
-                    <div class="search-box" style="flex-shrink: 0; position: relative;">
+
+                    <!-- Input Search Produk -->
+                    <div class="search-box" style="width: auto; flex-shrink: 0; position: relative;">
                         <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px;"></i>
-                        <input type="text" placeholder="Cari menu..." style="padding: 7px 12px 7px 32px; border-radius: 20px; border: 1px solid var(--border-color); background: #f8fafc; font-size: 12px; outline: none; width: 160px;">
+                        <input type="text" id="productSearchInput" oninput="filterProducts()" placeholder="Cari menu..." style="padding: 7px 12px 7px 32px; border-radius: 20px; border: 1px solid var(--border-color); background: #f8fafc; font-size: 12px; outline: none; width: 160px;">
                     </div>
                 </div>
 
@@ -78,47 +94,52 @@
                 <div class="product-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px;">
                     @foreach($products as $prod)
                     @php
+                        // Tentukan apakah produk tidak bisa dibeli (stok <= 0 atau dinonaktifkan admin)
                         $isHabis = $prod->stock <= 0;
+                        $isNonAktif = !$prod->is_available; // Perbaikan tanda $
+                        $tidakTersedia = $isHabis || $isNonAktif;
                     @endphp
-
-                    <div class="product-card"
+                    <div class="product-card {{ $tidakTersedia ? 'product-card-disabled' : 'product-card-available' }}"
                         data-id="{{ $prod->id }}"
                         data-name="{{ $prod->name }}"
                         data-price="{{ $prod->selling_price }}"
                         data-stock="{{ $prod->stock }}"
-                        @if(!$isHabis) onclick="handleCardClick(this)" @endif
-                        style="background: {{ $isHabis ? '#f1f5f9' : '#fff' }}; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; {{ $isHabis ? 'opacity: 0.45; filter: grayscale(100%); cursor: not-allowed;' : 'cursor: pointer; transition: 0.2s;' }}"
-                        @if(!$isHabis)
+                        data-category-id="{{ $prod->category_id }}"
+                        @if(!$tidakTersedia) onclick="handleCardClick(this)" @endif
+                        style="border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;"
+                        @if(!$tidakTersedia)
                         onmouseover="this.style.borderColor='#1c2a3a'; this.style.transform='translateY(-2px)'"
                         onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'"
                         @endif>
-                       
-                        <div style="width: 100%; height: 120px; background: #f1f5f9; position: relative; display: flex; align-items: center; justify-content: center;">
+                   
+                        <!-- Kotak Gambar Produk -->
+                        <div style="width: 100%; height: 120px; background: #f1f5f9; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            
+                            <!-- TAMPILKAN GAMBAR JIKA ADA -->
                             @if($prod->image)
                                 <img src="{{ asset($prod->image) }}" alt="{{ $prod->name }}" style="width: 100%; height: 100%; object-fit: cover;">
                             @else
-                                <i class="fa-solid fa-box-open" style="font-size: 28px; color: #cbd5e1;"></i>
+                                <i class="fa-solid fa-image" style="font-size: 28px; color: #cbd5e1;"></i>
                             @endif
+
+                            <!-- Badge Status -->
                             @if($isHabis)
-                                <span style="position: absolute; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px;">HABIS</span>
+                                <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #dc2626; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px;">Stok Habis</span>
+                            @elseif($isNonAktif)
+                                <span style="position: absolute; top: 10px; right: 10px; background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">Non-Aktif</span>
+                            @else
+                                <span style="position: absolute; top: 10px; right: 10px; background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px;">Tersedia</span>
                             @endif
                         </div>
-                       
+           
                         <div style="padding: 12px; display: flex; flex-direction: column; gap: 4px; position: relative;">
                             <span style="font-size: 13px; font-weight: 600; color: #1e293b;">{{ $prod->name }}</span>
                             <span style="font-size: 12px; font-weight: 700; color: #02c77f;">Rp {{ number_format($prod->selling_price, 0, ',', '.') }}</span>
-                            
+                           
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                                    <span class="{{ $isHabis ? 'text-stock-habis' : 'text-stock-normal' }}">
-                                        Stok: {{ $prod->stock }}
-                                    </span>
-
-                                <!-- Tombol Edit Produk Khusus Admin di Setiap Card -->
-                                @if(auth()->check() && auth()->user()->role === 'admin')
-                                <button type="button" onclick="event.stopPropagation(); openEditModal('{{ $prod->id }}', '{{ $prod->name }}', '{{ $prod->category_id }}', '{{ $prod->purchase_price }}', '{{ $prod->selling_price }}', '{{ $prod->stock }}', '{{ $prod->is_available }}')" style="background: #e2e8f0; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; color: #1e293b; cursor: pointer; z-index: 2;" title="Edit Produk">
-                                    <i class="fa-solid fa-pen"></i> Edit
-                                </button>
-                                @endif
+                                <span class="{{ $isHabis ? 'text-stock-habis' : 'text-stock-normal' }}">
+                                    Stok: {{ $prod->stock }}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -227,193 +248,6 @@
 @endsection
 
 @section('modals')
-<!-- ================= MODAL EDIT PRODUK ================= -->
-    <div id="editProductModal" class="mac-modal-overlay">
-        <div class="mac-modal-window">
-            <div class="mac-modal-header">
-                <div class="mac-window-actions">
-                    <span class="mac-dot mac-close" onclick="closeEditModal()" title="Tutup"></span>
-                </div>
-                <span class="mac-window-title">Edit Produk</span>
-                <div style="width: 40px;"></div>
-            </div>
-            <div class="mac-modal-body">
-                <form id="editProductForm" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    @method('PUT')
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="edit_name">Nama Produk</label>
-                            <input type="text" id="edit_name" name="name" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_category_id">Kategori</label>
-                            <select id="edit_category_id" name="category_id" class="form-control" required>
-                                <option value="">Pilih Kategori</option>
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_purchase_price">Harga Beli / Modal (Rp)</label>
-                            <input type="number" id="edit_purchase_price" name="purchase_price" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_selling_price">Harga Jual (Rp)</label>
-                            <input type="number" id="edit_selling_price" name="selling_price" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_stock">Stok</label>
-                            <input type="number" id="edit_stock" name="stock" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_is_available">Status Ketersediaan</label>
-                            <select id="edit_is_available" name="is_available" class="form-control" required>
-                                <option value="1">Available (Tersedia)</option>
-                                <option value="0">Not Available (Habis)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_image">Ganti Foto Produk (Opsional)</label>
-                            <input type="file" id="edit_image" name="image" class="form-control" accept="image/*" style="padding: 5px;">
-                        </div>
-                        <button type="submit" class="btn-save-mac" style="background: #1c2a3a; color: #fff; padding: 10px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Perbarui Produk</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= MODAL BUKU UTANG ================= -->
-    <div id="cashierDebtModal" class="mac-modal-overlay">
-        <div class="mac-modal-window">
-            <div class="mac-modal-header">
-                <div class="mac-window-actions">
-                    <span class="mac-dot mac-close" onclick="closeCashierDebtModal()" title="Tutup"></span>
-                </div>
-                <div class="mac-window-title">Buku Utang Pelanggan</div>
-                <div style="width: 36px;"></div>
-            </div>
-            <div class="mac-modal-body" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px;">
-                    <div style="display: flex; gap: 6px; flex: 1;">
-                        <input type="text" id="debtSearchInput" placeholder="Cari nama pelanggan..." style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                        <button type="button" id="debtSearchBtn" style="background: #1c2a3a; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600;">Cari</button>
-                    </div>
-                   
-                    <form action="{{ route('debts.archivePaid') }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus semua data utang yang sudah lunas?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" style="background: #ef4444; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; white-space: nowrap;">
-                            <i class="fa-solid fa-trash-can"></i> Arsip Lunas
-                        </button>
-                    </form>
-                </div>
-                <div id="debtTableContainer">
-                    @include('debts.partials.table', ['debtList' => $debts])
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MAC-STYLE MODAL TAMBAH PRODUK -->
-    <div id="addProductModal" class="mac-modal-overlay">
-        <div class="mac-modal-window">
-            <div class="mac-modal-header">
-                <div class="mac-window-actions">
-                    <span class="mac-dot mac-close" onclick="closeAddModal()" title="Tutup"></span>
-                </div>
-                <span class="mac-window-title">Tambah Produk Baru</span>
-                <div style="width: 40px;"></div>
-            </div>
-            <div class="mac-modal-body">
-                <form action="{{ route('cashier.product.store') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="name">Nama Produk</label>
-                            <input type="text" id="name" name="name" class="form-control" value="{{ old('name') }}" placeholder="Contoh: Djarum Super 12" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="category_id">Kategori</label>
-                            <select id="category_id" name="category_id" class="form-control" required>
-                                <option value="">Pilih Kategori</option>
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="purchase_price">Harga Beli / Modal (Rp)</label>
-                            <input type="number" id="purchase_price" name="purchase_price" class="form-control" value="{{ old('purchase_price') }}" placeholder="Contoh: 25000" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="selling_price">Harga Jual (Rp)</label>
-                            <input type="number" id="selling_price" name="selling_price" class="form-control" value="{{ old('selling_price') }}" placeholder="Contoh: 28000" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="stock">Stok Awal</label>
-                            <input type="number" id="stock" name="stock" class="form-control" value="{{ old('stock') }}" placeholder="Contoh: 50" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="is_available">Status Ketersediaan</label>
-                            <select id="is_available" name="is_available" class="form-control" required>
-                                <option value="1">Available (Tersedia)</option>
-                                <option value="0">Not Available (Habis)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="image">Foto Produk</label>
-                            <input type="file" id="image" name="image" class="form-control" accept="image/*" onchange="previewImageModal(event)" style="padding: 5px;">
-                        </div>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 12px;">
-                            <div class="preview-box-mac">
-                                <i id="preview-icon-mac" class="fa-solid fa-image" style="font-size: 20px; color: #cbd5e1;"></i>
-                                <img id="img-preview-mac" src="#" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                            </div>
-                            <span style="font-size: 11px; color: #64748b;">Format: JPG, PNG, WEBP. Maks 2MB.</span>
-                        </div>
-                        <button type="submit" class="btn-save-mac">Simpan Produk</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Restore Database -->
-<div id="restoreModal" class="mac-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="mac-modal-window" style="background: #fff; width: 400px; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-        <div class="mac-modal-header" style="background: #f1f5f9; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: 700; font-size: 13px; color: #1e293b;"><i class="fa-solid fa-database"></i> Restore Database</span>
-            <button onclick="closeRestoreModal()" style="background: none; border: none; font-size: 14px; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <form action="{{ route('database.restore') }}" method="POST" enctype="multipart/form-data" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
-            @csrf
-            <div style="font-size: 12px; color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 6px;">
-                <i class="fa-solid fa-triangle-exclamation"></i> Peringatan: Melakukan restore akan menimpa seluruh data saat ini dengan data dari file backup!
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; font-weight: 600; color: #475569;">Pilih File Backup (.sql):</label>
-                <input type="file" name="backup_file" accept=".sql" required style="font-size: 11px; border: 1px solid #cbd5e1; padding: 6px; border-radius: 6px;">
-            </div>
-            <button type="submit" onclick="return confirm('Yakin ingin merestore database sekarang?')" style="background: #1c2a3a; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                Proses Restore
-            </button>
-        </form>
-    </div>
-</div>
-
-<script>
-    function openRestoreModal(e) {
-        if(e) e.preventDefault();
-        document.getElementById('restoreModal').style.display = 'flex';
-    }
-    function closeRestoreModal() {
-        document.getElementById('restoreModal').style.display = 'none';
-    }
-</script>
-
     @if(session('success'))
         <div id="toast-alert" class="toast-notification">
             <div style="background: rgba(2, 199, 127, 0.15); color: #02c77f; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
@@ -448,6 +282,7 @@
 <script>
     let cart = [];
     let currentGrandTotal = 0;
+    let activeCategory = 'all';
 
     const customerSearch = document.getElementById('customer_search');
     const customersData = customerSearch ? JSON.parse(customerSearch.getAttribute('data-customers') || '[]') : [];
@@ -509,6 +344,50 @@
             suggestionsBox.style.display = 'none';
         }
     });
+
+    // Fungsi Gabungan untuk Filter Kategori & Pencarian Real-time
+    function filterProducts(categoryId = null, element = null) {
+        if (categoryId !== null) {
+            activeCategory = categoryId;
+            
+            // Ubah class 'active' pada tombol kategori secara visual
+            document.querySelectorAll('.category-pill').forEach(btn => {
+                btn.classList.remove('active');
+                // Berikan styling aktif sederhana jika diperlukan
+                btn.style.background = 'transparent';
+                btn.style.color = '#475569';
+            });
+            if (element) {
+                element.classList.add('active');
+                element.style.background = 'var(--sidebar-bg, #1c2a3a)';
+                element.style.color = '#ffffff';
+            }
+        }
+
+        const searchInput = document.getElementById('productSearchInput');
+        const keyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const productCards = document.querySelectorAll('.product-card');
+
+        let visibleCount = 0;
+
+        productCards.forEach(card => {
+            const productName = (card.getAttribute('data-name') || '').toLowerCase();
+            const productCatId = card.getAttribute('data-category-id');
+
+            // Cek kecocokan kategori
+            const matchesCategory = (activeCategory === 'all' || productCatId === String(activeCategory));
+            
+            // Cek kecocokan keyword pencarian
+            const matchesSearch = productName.includes(keyword);
+
+            if (matchesCategory && matchesSearch) {
+                card.style.display = 'flex'; // Tampilkan kembali
+                visibleCount++;
+            } else {
+                card.style.display = 'none'; // Sembunyikan
+            }
+        });
+    }
 
     function addToCart(id, name, price, stock) {
         let existingItem = cart.find(item => item.id === id);

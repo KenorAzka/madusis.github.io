@@ -6,8 +6,7 @@
 <style>
     .backup-container {
         padding: 30px;
-        max-width: 900px;
-        margin: 0 auto;
+        margin: 0 ;
         width: 100%;
     }
     .page-header {
@@ -117,7 +116,7 @@
 @endsection
 
 @section('content')
-<div class="backup-container">
+<div class="backup-container" style="flex: 1; width:100%; padding: 30px; overflow-y: auto; background: #f8fafc;">
 
     <!-- Notifikasi Sukses / Error -->
     @if(session('success'))
@@ -154,10 +153,8 @@
 
     <!-- Header Halaman -->
     <div class="page-header">
-        <h1 class="page-title">
-            <i class="fa-solid fa-database"></i> Backup & Restore Database
-        </h1>
-        <p class="page-subtitle">Kelola dan amankan seluruh data transaksi, produk, serta pelanggan Madusis POS Anda.</p>
+        <h2 class="page-title" style="font-size: 20px;">Backup & Restore Database</h2>
+        <p class="page-subtitle" style="font-size: 12px;">Kelola dan amankan seluruh data transaksi, produk, serta pelanggan Madusis POS Anda.</p>
     </div>
 
     <!-- Grid Kartu Fitur -->
